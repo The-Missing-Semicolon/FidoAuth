@@ -1,0 +1,48 @@
+<html>
+    <head>
+        <title>FIDO2 Proxy Authenticator</title>
+        <script>
+            function barraytoa(arrayBuffer) {
+                return btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+            }
+
+            const challenge = {{ challenge_json }};
+
+            async function authenticate_key()
+            {
+                try
+                {
+                    challenge.publicKey.challenge = new Uint8Array(challenge.publicKey.challenge);
+                    challenge.publicKey.allowCredentials[0].id = new Uint8Array(challenge.publicKey.allowCredentials[0].id);
+
+                    let result = await navigator.credentials.get(challenge);
+                    document.getElementById('id').value = barraytoa(result.rawId);
+                    document.getElementById('authenticatorData').value = barraytoa(result.response.authenticatorData);
+                    document.getElementById('clientDataJSON').value = barraytoa(result.response.clientDataJSON);
+                    document.getElementById('signature').value = barraytoa(result.response.signature);
+                    document.getElementById('authdata').submit()
+                } catch (e) {
+                    document.getElementById('result').innerHTML = e;
+                }
+            }
+
+            window.onload = function(){
+                authenticate_key();
+            }
+        </script>
+    </head>
+    <body style="text-align: center; padding-top: 40px; padding-bottom: 40px; background-color: black; color: whitesmoke; font-family: sans-serif;">
+        <form id="authdata" action="finish?back={{ back_url | urlencode }}" method="post">
+            <input type="hidden" name="auth_id" value="{{ auth_id }}"/>
+            <input type="hidden" name="username" value="{{ username }}"/>
+            <input type="hidden" id="id" name="id" />
+            <input type="hidden" id="authenticatorData" name="authenticatorData" />
+            <input type="hidden" id="clientDataJSON" name="clientDataJSON" />
+            <input type="hidden" id="signature" name="signature" />
+        </form>
+        <span style="font-size: larger; font-family: sans-serif;">Authenticating...</span><br/>
+        <br/>
+        <div id="result"></div><br/>
+        <div id="back"><a href="login?back={{ back_url }}">Try Again</a></div>
+    </body>
+</html>

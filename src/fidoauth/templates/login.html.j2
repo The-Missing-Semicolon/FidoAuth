@@ -1,0 +1,19 @@
+<html>
+    <head>
+        <title>FIDO2 Proxy Authenticator</title>
+    </head>
+    <body style="text-align: center; padding-top: 40px; padding-bottom: 40px; background-color: black; color: whitesmoke; font-family: sans-serif;">
+        <span style="font-size: larger; font-family: sans-serif;">Authenticate for {{ back_url }}</span><br/>
+        <br/>
+        <br/>
+        <form action="authenticate?back={{ back_url | urlencode }}" method="post">
+            <input type="hidden" name="auth_id" value="{{ auth_id }}"/>
+            <label for="username">Username:</label>
+            <input type="text" id="username" name="username" autocorrect="off" autocapitalize="none" required autofocus/><br/>
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" required/><br/>
+            <input type="submit" id="submit" name="submit" value="Authenticate" />
+        </form><br/>
+        <a href="register?back={{ back_url | urlencode }}">Register Key</a><br/>
+    </body>
+</html>

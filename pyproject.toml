@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fidoauth"
+version = "0.0.3"
+authors = [
+  { name="The-Missing-Semicolon", email="author@example.com" },
+]
+description = "A simple utility to facilitate implementing a reverse proxy that provides two factor authentication with FIDO2 support."
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "argon2-cffi",
+    "auth-tkt",
+    "fido2 >= 1.1.2",
+    "Jinja2"
+]
+
+
+[tool.setuptools.package-data]
+"fidoauth.templates" = ["*.j2"]
+"fidoauth.config" = ["*.cfg"]
+
+[project.scripts]
+fido_save_creds = "fidoauth.cmd:SaveCreds"
+fido_generate_key = "fidoauth.cmd:GenerateKey"
