@@ -19,7 +19,7 @@ The major benefits of FIDO2, versus other authentication protocols, are....
 
 ## Configuration
 * Install the FidoAuth wheel into a virtual environment.
-* Write a config file to `/etc/fidoproxy.conf`, for your environment. The config defaults are embedded in the FidoAuth wheel in `config/default.cfg`, refer to this file for details on the config parameters.
+* Write a config file to `/etc/fidoproxy.conf`, for your environment. The config defaults are embedded in the FidoAuth wheel in [`default.cfg`](src/fidoauth/config/default.cfg), refer to this file for details on the config parameters.
 * Run the `fido_generate_key` entry point to generate the secret for `mod_auth_token`.
 * Create a wsgi script, such as the following...
     ```
@@ -98,15 +98,3 @@ Registering users requires shell access to the server.
 * Enter the username, and click "Being Registration". This will cause the client browser to run the token registration process.
 * Once that has completed, run the `fido_save_creds` entry point on the server with the provided arguments to store the key. This will prompt for the users password.
 
-
-## TODO List
-
-* Automated test suite
-* Add a logout URL
-* Display an error when javascript isn't enabled
-* Behavior when paired TLS client certificates
-  * Force the username to match the name in the client cert
-  * Allow configurations where the password and/or fido auth are bypassed
-* Investigate alternatives to the auth_tkt package
-* Support for mod_auth_pubtkt
-* Support for the nginx method originally supported in https://github.com/newhouseb/nginxwebauthn
