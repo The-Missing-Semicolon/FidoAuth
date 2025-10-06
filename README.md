@@ -19,7 +19,7 @@ The major benefits of FIDO2, versus other authentication protocols, are....
 
 ## Configuration
 * Install the FidoAuth wheel into a virtual environment.
-* Write a config file to `/etc/fidoproxy.conf`, for your environment. The config defaults are embedded in the FidoAuth wheel in [`default.cfg`](src/fidoauth/config/default.cfg), refer to this file for details on the config parameters.
+* Write a config file to `/etc/fidoauth.conf`, for your environment. The config defaults are embedded in the FidoAuth wheel in [`default.cfg`](src/fidoauth/config/default.cfg), refer to this file for details on the config parameters.
 * Run the `fido_generate_key` entry point to generate the secret for `mod_auth_token`.
 * Paste the [wsgi script](fidoauth.wsgi) in an appropriate location.
 * Once the config file has been created, configure your web server using one of the options below...

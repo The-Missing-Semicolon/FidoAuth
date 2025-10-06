@@ -10,14 +10,13 @@ import argon2
 
 from . import config
 
-PASSWORD_HASHER = argon2.PasswordHasher()
 
 class AuthenticationError(Exception):
     #TODO: Make an error page render when this gets thrown...
     pass
 
 def GetRawCredsForUser(username):
-    split = re.compile("([^\s]*)\s+([^\s]*)\s+([^\s]*)")
+    split = re.compile(r"([^\s]*)\s+([^\s]*)\s+([^\s]*)")
 
     creds = []
     passhash = None

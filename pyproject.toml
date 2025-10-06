@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "fidoauth"
-version = "0.0.3"
+version = "0.0.4"
 authors = [
   { name="The-Missing-Semicolon", email="author@example.com" },
 ]
@@ -19,7 +19,7 @@ classifiers = [
 dependencies = [
     "argon2-cffi",
     "auth-tkt",
-    "fido2 >= 1.1.2",
+    "fido2 == 1.1.2",
     "Jinja2"
 ]
 

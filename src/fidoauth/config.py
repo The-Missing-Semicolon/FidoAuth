@@ -2,6 +2,7 @@ import datetime
 import logging
 import logging.handlers
 
+import importlib
 import importlib.resources
 import configparser
 
@@ -9,7 +10,7 @@ from pathlib import Path
 import sys
 
 
-CONFIG_FILE_PATH = "/etc/fidoproxy.conf"
+CONFIG_FILE_PATH = "/etc/fidoauth/fidoauth.conf"
 
 config = configparser.ConfigParser()
 
@@ -34,6 +35,8 @@ CHALLENGE_FILE = config["config"]["challenge_file"]
 MOD_TKT_CONFIG_FILE = config["config"]["mod_tkt_config"]
 
 SCRIPT_SAVE_CREDS = Path(sys.executable).parent / "save_creds.py"
+
+AUTHENTICATOR_PLUGIN = importlib.import_module(f"plugins.{config['config']['authenticator']}").Authenticator
 
 #If present, parese the mod_tkt config to get the secret and digest type
 MOD_TKT_SECRET = None

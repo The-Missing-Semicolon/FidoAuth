@@ -7,7 +7,7 @@ from . import server
 def application(environ, start_response):
     origin = environ.get('HTTP_ORIGIN', config.HTTP_ORIGIN)
     if origin != config.HTTP_ORIGIN:
-        raise Exception("Unexpected Origin")
+        raise Exception(f"Unexpected Origin, expected '{config.HTTP_ORIGIN}' got '{origin}'")
 
     get_query = parse_qs(environ.get('QUERY_STRING', ""))
     post_query = parse_qs(environ['wsgi.input'].read().decode())
@@ -25,7 +25,7 @@ def application(environ, start_response):
         elif environ["PATH_INFO"] == "/finish":
             status, headers, output = server.CompleteAuthentication(get_query, post_query, remote_addr)
         else:
-            config.GetLogger().error("Access to unknown page %s from %s", environ["REMOTE_ADDR"])
+            config.GetLogger().error("Access to unknown page %s from %s", environ["PATH_INFO"], environ["REMOTE_ADDR"])
             status = "404 Not Found"
             headers = [('Content-type', 'text/html')]
             output  = server.RenderError(environ, "Page not found")
@@ -39,6 +39,6 @@ def application(environ, start_response):
         headers = [('Content-type', 'text/html')]
         status = "500 Internal Server Error"
         output = server.RenderError(environ, "An error occured")
-    
+
     start_response(status, headers)
     return [output]

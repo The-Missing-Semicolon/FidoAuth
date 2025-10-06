@@ -10,7 +10,6 @@ from fido2.client import CollectedClientData
 from fido2.server import U2FFido2Server, PublicKeyCredentialRpEntity
 from fido2.webauthn import AuthenticatorData
 
-#TODO: This package is super old... Can I just assemble a ticket manually?
 import auth_tkt
 import auth_tkt.ticket
 
@@ -23,7 +22,7 @@ from . import common
 
 CHALLENGE = {}
 VALID_AUTH_IDS = []
-J2_ENVIRONMENT = Environment(loader=PackageLoader("authenticator", "templates"))
+J2_ENVIRONMENT = Environment(loader=PackageLoader("fidoauth", "templates"))
 
 LOGGER = config.GetLogger()
 
@@ -72,11 +71,11 @@ def BeginAuthenticate(get_query, post_query, remote_addr):
     time.sleep(random.SystemRandom().uniform(0.5, 2))
 
     creds, passhash = common.GetCredsForUser(username)
-    if len(creds) > 0 and passhash is not None:
+    if len(creds) > 0:
         #Check the provided password
         try:
-            common.PASSWORD_HASHER.verify(passhash, password)
-            LOGGER.debug("Password for %s accepted from %s", username, remote_addr)
+            cookies = config.GetAuthenticator().Authenticate(username, password, passhash)
+            LOGGER.debug("First factor authenticated for %s from %s", username, remote_addr)
             #TODO: if common.PASSWORD_HASHER.check_needs_rehash(passhash):
 
             #Begin FIDO2 authentication
@@ -104,7 +103,12 @@ def BeginAuthenticate(get_query, post_query, remote_addr):
 
             template = J2_ENVIRONMENT.get_template("authenticate.html.j2")
 
-            return "200 OK", [('Content-type', 'text/html')], template.render(auth_id=auth_id, challenge_json=json.dumps(auth_json), username=username.lower(), back_url=back_url).encode()
+            headers = []
+            headers.append(('Content-type', 'text/html'))
+            for cookie in cookies:
+                 headers.append(("Set-Cookie", cookie))
+
+            return "200 OK", headers, template.render(auth_id=auth_id, challenge_json=json.dumps(auth_json), username=username.lower(), back_url=back_url).encode()
 
         except argon2.exceptions.VerifyMismatchError:
             LOGGER.warning("Failed login attempt for user %s from %s", username, remote_addr)
@@ -192,6 +196,12 @@ def BeginRegistration(get_query, post_query, remote_addr):
     template = J2_ENVIRONMENT.get_template("registration.html.j2")
 
     return "200 OK", [('Content-type', 'text/html')], template.render(username=username, challenge_json=json.dumps(registration_json), config=config).encode()
+
+def Logout(get_query, post_query, remote_addr):
+    headers = []
+    headers.append(('Set-Cookie', "auth_tkt=invalid; Path=/"))
+
+    return "200 OK", headers, "".encode()
 
 def RenderError(environ, error_message):
     get_query = parse_qs(environ['QUERY_STRING'])
