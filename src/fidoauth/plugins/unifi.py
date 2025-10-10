@@ -2,7 +2,7 @@ import json
 import ssl
 
 from urllib import request
-from . import BaseAuthenticator
+from base import BaseAuthenticator
 
 UNIFI_HOST = "https://127.0.0.1:8443"
 
@@ -15,18 +15,21 @@ def _GetTlsContext():
 
 class Authenticator(BaseAuthenticator):
     def Authenticate(self, username, password, passhash):
+        del passhash # unused
+
         authdata = json.dumps({"username": username, "password": password, "remember": False, "strict":True})
         req = request.Request(f"{UNIFI_HOST}/api/login", data=authdata.encode())
-        resp = request.urlopen(req, context=_GetTlsContext())
-
-        cookies = []
-        for header in resp.getheaders():
-            if header[0] == "Set-Cookie":
-                cookies.append(header[1])
+        with request.urlopen(req, context=_GetTlsContext()) as resp
+            cookies = []
+            for header in resp.getheaders():
+                if header[0] == "Set-Cookie":
+                    cookies.append(header[1])
 
         return cookies
 
     def Logout(self, get_query, post_query, remote_addr):
+        del get_query, post_query, remote_addr
+
         req = request.Request(f"{UNIFI_HOST}/api/logout", data="".encode())
         resp = request.urlopen(req, context=_GetTlsContext())
         

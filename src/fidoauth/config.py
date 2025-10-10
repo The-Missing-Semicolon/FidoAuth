@@ -36,8 +36,6 @@ MOD_TKT_CONFIG_FILE = config["config"]["mod_tkt_config"]
 
 SCRIPT_SAVE_CREDS = Path(sys.executable).parent / "save_creds.py"
 
-AUTHENTICATOR_PLUGIN = importlib.import_module(f"plugins.{config['config']['authenticator']}").Authenticator
-
 #If present, parese the mod_tkt config to get the secret and digest type
 MOD_TKT_SECRET = None
 MOD_TKT_DIGEST_TYPE = None
@@ -57,3 +55,6 @@ def GetLogger():
     logger.addHandler(handler)
     logger.setLevel(logging.DEBUG)
     return logger
+
+def GetAuthenticator():
+    return importlib.import_module(f".plugins.{config['config']['authenticator']}", package="fidoauth").Authenticator()

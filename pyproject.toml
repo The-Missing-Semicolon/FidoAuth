@@ -29,5 +29,5 @@ dependencies = [
 "fidoauth.config" = ["*.cfg"]
 
 [project.scripts]
-fido_save_creds = "fidoauth.cmd:SaveCreds"
-fido_generate_key = "fidoauth.cmd:GenerateKey"
+fido_save_creds = "fidoauth.cmd:save_creds"
+fido_generate_key = "fidoauth.cmd:generate_key"

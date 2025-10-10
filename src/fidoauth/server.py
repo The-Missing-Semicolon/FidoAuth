@@ -1,3 +1,7 @@
+"""
+Serves authentication pages to the end user
+"""
+
 import random
 import json
 import base64
@@ -26,11 +30,16 @@ J2_ENVIRONMENT = Environment(loader=PackageLoader("fidoauth", "templates"))
 
 LOGGER = config.GetLogger()
 
-def Login(get_query, post_query, remote_addr):
+def login(get_query, post_query, remote_addr):
+    """
+    This is the initial landing page, with the username and password.
+    """
+    del get_query, post_query, remote_addr # Unused
+
     template = J2_ENVIRONMENT.get_template("login.html.j2")
 
     back_url = get_query.get("back", [config.DEFAULT_URL])[0]
-    auth_id = '%064x' % random.SystemRandom().getrandbits(8*32)
+    auth_id = f"{random.SystemRandom().getrandbits(8*32):064x}"
 
     # Track known generated authentication ids...
     # Doing this allows for checking for and preventing authentication replays (once the valid id is used, it is
@@ -43,7 +52,12 @@ def Login(get_query, post_query, remote_addr):
 
     return "200 OK", [('Content-type', 'text/html')], template.render(auth_id=auth_id, back_url=back_url).encode()
 
-def BeginAuthenticate(get_query, post_query, remote_addr):
+def begin_authenticate(get_query, post_query, remote_addr):
+    """
+    This is invoked when the user clicks the "Authenticate" on the login page. If the username and password are
+    correct, this will serve the authenticate page, which will proceed with FIDO based authentication.
+    """
+
     #TODO: Add some input sanitization?
     auth_id = post_query["auth_id"][0]
     username = post_query["username"][0]
@@ -64,19 +78,18 @@ def BeginAuthenticate(get_query, post_query, remote_addr):
     if auth_id not in VALID_AUTH_IDS:
         LOGGER.warning("Invalid authentication id for user %s from %s", username, remote_addr)
         raise common.AuthenticationError("Please try again")
-    
+
     VALID_AUTH_IDS.remove(auth_id)
 
     # Random sleep to attempt to cancel out any timing variance due to various authentication outcomes
     time.sleep(random.SystemRandom().uniform(0.5, 2))
 
-    creds, passhash = common.GetCredsForUser(username)
+    creds, passhash = common.get_creds_for_user(username)
     if len(creds) > 0:
         #Check the provided password
         try:
             cookies = config.GetAuthenticator().Authenticate(username, password, passhash)
             LOGGER.debug("First factor authenticated for %s from %s", username, remote_addr)
-            #TODO: if common.PASSWORD_HASHER.check_needs_rehash(passhash):
 
             #Begin FIDO2 authentication
             rp = PublicKeyCredentialRpEntity('FIDO2 Auth Server', config.HOST)
@@ -87,12 +100,12 @@ def BeginAuthenticate(get_query, post_query, remote_addr):
 
             auth_json = {
                 'publicKey' : {
-                    'challenge' : [c for c in auth_data["publicKey"]["challenge"]],
+                    'challenge' : list(auth_data["publicKey"]["challenge"]),
                     'rpId': auth_data["publicKey"]["rpId"],
                     'allowCredentials': [
                         {
                             'type' : creds["type"],
-                            'id' : [c for c in creds["id"]],
+                            'id' : list(creds["id"]),
                         } for creds in auth_data["publicKey"]["allowCredentials"]
                     ],
                     'extensions' : {
@@ -106,23 +119,29 @@ def BeginAuthenticate(get_query, post_query, remote_addr):
             headers = []
             headers.append(('Content-type', 'text/html'))
             for cookie in cookies:
-                 headers.append(("Set-Cookie", cookie))
+                headers.append(("Set-Cookie", cookie))
 
             return "200 OK", headers, template.render(auth_id=auth_id, challenge_json=json.dumps(auth_json), username=username.lower(), back_url=back_url).encode()
 
-        except argon2.exceptions.VerifyMismatchError:
+        except argon2.exceptions.VerifyMismatchError as exc:
             LOGGER.warning("Failed login attempt for user %s from %s", username, remote_addr)
             #TODO: Lock out after some number of attempts....
-            raise common.AuthenticationError("Invalid username or password")
+            raise common.AuthenticationError("Invalid username or password") from exc
     else:
         LOGGER.warning("Username %s was not found from %s", username, remote_addr)
         raise common.AuthenticationError("Invalid username or password")
 
-def CompleteAuthentication(get_query, post_query, remote_addr):
+def complete_authentication(get_query, post_query, remote_addr):
+    """
+    This is invoked when the user finishes FIDO authentication, and validates the crypto material provided by their
+    key. If successful, this will redirect to either the default page or the page that redirected them to
+    authentication in the first place.
+    """
+
     auth_id = post_query["auth_id"][0]
     username = post_query["username"][0]
     back_url = get_query.get("back", [config.DEFAULT_URL])[0]
-    
+
     credential_id = base64.b64decode(post_query["id"][0])
     client_data = CollectedClientData(base64.b64decode(post_query["clientDataJSON"][0]))
     auth_data = AuthenticatorData(base64.b64decode(post_query["authenticatorData"][0]))
@@ -131,12 +150,12 @@ def CompleteAuthentication(get_query, post_query, remote_addr):
     rp = PublicKeyCredentialRpEntity('FIDO2 Auth Server', config.HOST)
     server = U2FFido2Server(config.HTTP_ORIGIN, rp)
 
-    creds, _ = common.GetCredsForUser(username)
+    creds, _ = common.get_creds_for_user(username)
     (origin_auth_id, auth_start_time, challenge) = CHALLENGE[username.lower()]
 
     if auth_id != origin_auth_id:
         raise common.AuthenticationError("Please try again")
-    
+
     if datetime.datetime.now() - auth_start_time > config.AUTHENTICATION_TIMEOUT:
         raise common.AuthenticationError("Authentication timeout, please try again")
 
@@ -162,12 +181,23 @@ def CompleteAuthentication(get_query, post_query, remote_addr):
 
     return ("302 Found", headers, "".encode())
 
-def Registration(get_query, post_query, remote_addr):
+def registration(get_query, post_query, remote_addr):
+    """
+    This is invoked when the user clicks the "Registery Key" on the login page, and will begin the proceess of
+    registering a new key.
+    """
+    del get_query, post_query, remote_addr # Unused
     template = J2_ENVIRONMENT.get_template("register.html.j2")
 
     return "200 OK", [('Content-type', 'text/html')], template.render().encode()
 
-def BeginRegistration(get_query, post_query, remote_addr):
+def begin_registration(get_query, post_query, remote_addr):
+    """
+    This is invoked when the user clicks the "Begin Registration" on the key registration page. The page that is
+    rendered will display the command line for registering the users key.
+    """
+    del get_query, remote_addr # Ignore
+
     username = post_query["username"][0]
 
     rp = PublicKeyCredentialRpEntity('FIDO2 Auth Server', config.HOST)
@@ -176,7 +206,7 @@ def BeginRegistration(get_query, post_query, remote_addr):
     #TODO: Fill in some of this data with certificate fields?
     registration_data, state = server.register_begin({ 'id': username.encode(), 'name': username, 'displayName': username })
 
-    with open(config.CHALLENGE_FILE, 'w') as f:
+    with open(config.CHALLENGE_FILE, 'w', encoding="utf8") as f:
         f.write(json.dumps(state))
 
     registration_json = {
@@ -184,10 +214,10 @@ def BeginRegistration(get_query, post_query, remote_addr):
             'rp' : dict(registration_data.public_key.rp),
             'user' : {
                 'name': registration_data.public_key.user.name,
-                'id': [c for c in registration_data.public_key.user.id],
+                'id': list(registration_data.public_key.user.id),
                 'displayName': registration_data.public_key.user.name
             },
-            'challenge' : [c for c in registration_data.public_key.challenge],
+            'challenge' : list(registration_data.public_key.challenge),
             'pubKeyCredParams' : [dict(params) for params in registration_data.public_key.pub_key_cred_params],
             'extensions': registration_data.public_key.extensions
         }
@@ -197,13 +227,21 @@ def BeginRegistration(get_query, post_query, remote_addr):
 
     return "200 OK", [('Content-type', 'text/html')], template.render(username=username, challenge_json=json.dumps(registration_json), config=config).encode()
 
-def Logout(get_query, post_query, remote_addr):
+def logout(get_query, post_query, remote_addr):
+    """
+    This can be redirected to to invalidate the mod_auth_tkt cookie.
+    """
+    del get_query, post_query, remote_addr # Ignore
+
     headers = []
     headers.append(('Set-Cookie', "auth_tkt=invalid; Path=/"))
 
     return "200 OK", headers, "".encode()
 
-def RenderError(environ, error_message):
+def render_error(environ, error_message):
+    """
+    This page is rendered when ever an error occurs.
+    """
     get_query = parse_qs(environ['QUERY_STRING'])
     back_url = get_query.get("back", [config.DEFAULT_URL])[0]
 
