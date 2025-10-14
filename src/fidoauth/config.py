@@ -1,3 +1,8 @@
+"""
+FIDOAuth configuration class. When imported, this module reads defaults from the `configs/defaults.cfg` file embedded in
+this wheel, and the path specified by `CONFIG_FILE_PATH`.
+"""
+
 import datetime
 import logging
 import logging.handlers
@@ -40,14 +45,17 @@ SCRIPT_SAVE_CREDS = Path(sys.executable).parent / "save_creds.py"
 MOD_TKT_SECRET = None
 MOD_TKT_DIGEST_TYPE = None
 if Path(MOD_TKT_CONFIG_FILE).is_file():
-    with open(MOD_TKT_CONFIG_FILE, "r") as f:
+    with open(MOD_TKT_CONFIG_FILE, "r", encoding="utf8") as f:
         for line in f:
             if "TKTAuthSecret" in line:
                 MOD_TKT_SECRET = line.strip().split(" ")[1].strip("\"")
             elif "TKTAuthDigestType" in line:
                 MOD_TKT_DIGEST_TYPE = line.strip().split(" ")[1]
 
-def GetLogger():
+def get_logger():
+    """
+    Returns the logger object pointing to the log file specified in the configuration.
+    """
     logger = logging.getLogger(__file__)
     handler = logging.handlers.RotatingFileHandler(LOG_FILE, maxBytes=2000, backupCount=10)
     formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s (%(filename)s:%(lineno)d)')
@@ -56,5 +64,8 @@ def GetLogger():
     logger.setLevel(logging.DEBUG)
     return logger
 
-def GetAuthenticator():
+def get_authenticator():
+    """
+    Returns an instance of the configured authenticator plugin
+    """
     return importlib.import_module(f".plugins.{config['config']['authenticator']}", package="fidoauth").Authenticator()

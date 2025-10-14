@@ -1,3 +1,7 @@
+"""
+Implementation of commandline utilities assocaited with FidoAuth.
+"""
+
 import json
 import base64
 import argparse
@@ -10,6 +14,9 @@ from . import common
 from . import config
 
 def generate_key():
+    """
+    Generate the mod_auth_tkt key, and write it to the path specified by `mod_tkt_config` in the config file.
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--digest-type", default="SHA512", choices=["MD5", "SHA256", "SHA512"])
     args = parser.parse_args()
@@ -27,6 +34,10 @@ TKTAuthDigestType {args.digest_type}
         f.write(config_contents)
 
 def save_creds():
+    """
+    Save FIDO and password credentials to the credential database. This function uses the authenticator plugin to prompt ofr the password if necessary.
+    """
+
     parser = argparse.ArgumentParser()
     parser.add_argument("username")
     parser.add_argument("client_data")
@@ -43,7 +54,7 @@ def save_creds():
 
     creds, passhash = common.get_raw_creds_for_user(args.username)
     if passhash is None:
-        passhash = config.GetAuthenticator().GetPassword(args.username)
+        passhash = config.get_authenticator().get_password(args.username)
 
     common.touch_conf_file(config.MOD_TKT_CONFIG_FILE)
 

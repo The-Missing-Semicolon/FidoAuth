@@ -10,8 +10,6 @@ from pathlib import Path
 
 from fido2.webauthn import AttestedCredentialData
 
-import argon2
-
 from . import config
 
 class AuthenticationError(Exception):
