@@ -19,7 +19,7 @@ classifiers = [
 dependencies = [
     "argon2-cffi",
     "auth-tkt",
-    "fido2 == 1.1.2",
+    "fido2",
     "Jinja2"
 ]
 

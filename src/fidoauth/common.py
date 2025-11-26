@@ -9,8 +9,8 @@ import json
 import os
 from pathlib import Path
 
-from fido2.server import U2FFido2Server, PublicKeyCredentialRpEntity
-from fido2.webauthn import AttestedCredentialData, AttestationObject, CollectedClientData
+from fido2.server import Fido2Server, PublicKeyCredentialRpEntity
+from fido2.webauthn import AttestedCredentialData, AuthenticatorAttestationResponse, AttestationObject, CollectedClientData, RegistrationResponse
 
 from . import config
 
@@ -63,12 +63,12 @@ def touch_conf_file(path):
 
 def save_creds(username, client_data, attestation_object):
     #TODO: Create creds file if it doesn't already exist
-    rp = PublicKeyCredentialRpEntity('FIDO2 Auth Server', config.HOST)
-    server = U2FFido2Server('https://' + config.HOST, rp)
+    rp = PublicKeyCredentialRpEntity(name='FIDO2 Auth Server', id=config.HOST)
+    server = Fido2Server(rp=rp)
 
-    client_data = CollectedClientData(client_data)
-    attestation_object = AttestationObject(attestation_object)
-
+    attestation_response = AuthenticatorAttestationResponse(client_data=CollectedClientData(client_data), attestation_object=AttestationObject(attestation_object))
+    registration_response = RegistrationResponse(raw_id=username.encode("utf-8"), response=attestation_response)
+    
 
     creds, passhash = get_raw_creds_for_user(username)
     if passhash is None:
@@ -77,9 +77,7 @@ def save_creds(username, client_data, attestation_object):
     #touch_conf_file(config.MOD_TKT_CONFIG_FILE)
 
     with open(config.CHALLENGE_FILE, encoding="utf8") as challenge_file:
-        #import pdb
-        #pdb.set_trace()
-        auth_data = server.register_complete(json.loads(challenge_file.read()), client_data, attestation_object)
+        auth_data = server.register_complete(state=json.loads(challenge_file.read()), response=registration_response)
         if auth_data.credential_data not in creds:
             with open(config.CREDS_FILE, 'a', encoding="utf8") as creds_file:
                 creds_file.write(f'{username} {base64.b64encode(auth_data.credential_data).decode("ascii")} {passhash}\n')
