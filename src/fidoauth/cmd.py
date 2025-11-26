@@ -7,9 +7,6 @@ import base64
 import argparse
 import random
 
-from fido2.server import U2FFido2Server, PublicKeyCredentialRpEntity
-from fido2.webauthn import AttestationObject, CollectedClientData
-
 from . import common
 from . import config
 
@@ -44,25 +41,4 @@ def save_creds():
     parser.add_argument("attestation_object")
     args = parser.parse_args()
 
-    #TODO: Create creds file if it doesn't already exist
-
-    args.client_data = CollectedClientData(base64.b64decode(args.client_data))
-    args.attestation_object = AttestationObject(base64.b64decode(args.attestation_object))
-
-    rp = PublicKeyCredentialRpEntity('FIDO2 Auth Server', config.HOST)
-    server = U2FFido2Server('https://' + config.HOST, rp)
-
-    creds, passhash = common.get_raw_creds_for_user(args.username)
-    if passhash is None:
-        passhash = config.get_authenticator().get_password(args.username)
-
-    common.touch_conf_file(config.MOD_TKT_CONFIG_FILE)
-
-    with open(config.CHALLENGE_FILE, encoding="utf8") as challenge_file:
-        auth_data = server.register_complete(json.loads(challenge_file.read()), args.client_data, args.attestation_object)
-        if auth_data.credential_data not in creds:
-            with open(config.CREDS_FILE, 'a', encoding="utf8") as creds_file:
-                creds_file.write(f'{args.username} {base64.b64encode(auth_data.credential_data).decode("ascii")} {passhash}\n')
-            print(f"Credentials for {args.username} saved successfully")
-        else:
-            print(f"Credentials for {args.username} already registered")
+    common.save_creds(args.username, base64.urlsafe_b64decode(args.client_data), base64.urlsafe_b64decode(args.attestation_object))

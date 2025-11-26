@@ -5,10 +5,12 @@ Common helper functions
 import re
 import base64
 import grp
+import json
 import os
 from pathlib import Path
 
-from fido2.webauthn import AttestedCredentialData
+from fido2.server import U2FFido2Server, PublicKeyCredentialRpEntity
+from fido2.webauthn import AttestedCredentialData, AttestationObject, CollectedClientData
 
 from . import config
 
@@ -33,7 +35,7 @@ def get_raw_creds_for_user(username):
                 if username.lower() == user.lower():
                     if passhash is None:
                         passhash = linehash
-                    creds.append(base64.b64decode(cred_data))
+                    creds.append(base64.urlsafe_b64decode(cred_data))
     except FileNotFoundError:
         pass
 
@@ -58,3 +60,30 @@ def touch_conf_file(path):
     Path(path).chmod(0o640)
     gid = grp.getgrnam(config.SERVER_USER).gr_gid
     os.chown(path, 0, gid)
+
+def save_creds(username, client_data, attestation_object):
+    #TODO: Create creds file if it doesn't already exist
+    rp = PublicKeyCredentialRpEntity('FIDO2 Auth Server', config.HOST)
+    server = U2FFido2Server('https://' + config.HOST, rp)
+
+    client_data = CollectedClientData(client_data)
+    attestation_object = AttestationObject(attestation_object)
+
+
+    creds, passhash = get_raw_creds_for_user(username)
+    if passhash is None:
+        passhash = config.get_authenticator().get_password(username)
+
+    #touch_conf_file(config.MOD_TKT_CONFIG_FILE)
+
+    with open(config.CHALLENGE_FILE, encoding="utf8") as challenge_file:
+        #import pdb
+        #pdb.set_trace()
+        auth_data = server.register_complete(json.loads(challenge_file.read()), client_data, attestation_object)
+        if auth_data.credential_data not in creds:
+            with open(config.CREDS_FILE, 'a', encoding="utf8") as creds_file:
+                creds_file.write(f'{username} {base64.b64encode(auth_data.credential_data).decode("ascii")} {passhash}\n')
+            print(f"Credentials for {username} saved successfully")
+        else:
+            print(f"Credentials for {username} already registered")
+

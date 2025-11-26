@@ -12,7 +12,7 @@ from urllib.parse import parse_qs
 
 from fido2.client import CollectedClientData
 from fido2.server import U2FFido2Server, PublicKeyCredentialRpEntity
-from fido2.webauthn import AuthenticatorData
+from fido2.webauthn import AuthenticatorData, PublicKeyCredentialUserEntity
 
 import auth_tkt
 import auth_tkt.ticket
@@ -21,6 +21,9 @@ from jinja2 import Environment, PackageLoader
 
 from . import config
 from . import common
+
+import fido2.features
+fido2.features.webauthn_json_mapping.enabled = True
 
 LOGGER = config.get_logger()
 
@@ -103,12 +106,12 @@ class FidoAuthServer:
 
         auth_json = {
             'publicKey' : {
-                'challenge' : list(auth_data["publicKey"]["challenge"]),
+                'challenge' : auth_data["publicKey"]["challenge"].replace("-", "+").replace("_", "/"),
                 'rpId': auth_data["publicKey"]["rpId"],
                 'allowCredentials': [
                     {
                         'type' : creds["type"],
-                        'id' : list(creds["id"]),
+                        'id' : creds["id"].replace("-", "+").replace("_", "/"),
                     } for creds in auth_data["publicKey"]["allowCredentials"]
                 ],
                 'extensions' : {
@@ -137,10 +140,10 @@ class FidoAuthServer:
         username = post_query["username"][0]
         back_url = get_query.get("back", [config.DEFAULT_URL])[0]
 
-        credential_id = base64.b64decode(post_query["id"][0])
-        client_data = CollectedClientData(base64.b64decode(post_query["clientDataJSON"][0]))
-        auth_data = AuthenticatorData(base64.b64decode(post_query["authenticatorData"][0]))
-        signature = base64.b64decode(post_query["signature"][0])
+        credential_id = base64.urlsafe_b64decode(post_query["id"][0])
+        client_data = CollectedClientData(base64.urlsafe_b64decode(post_query["clientDataJSON"][0]))
+        auth_data = AuthenticatorData(base64.urlsafe_b64decode(post_query["authenticatorData"][0]))
+        signature = base64.urlsafe_b64decode(post_query["signature"][0])
 
         rp = PublicKeyCredentialRpEntity('FIDO2 Auth Server', config.HOST)
         server = U2FFido2Server(config.HTTP_ORIGIN, rp)
@@ -199,7 +202,7 @@ class FidoAuthServer:
         server = U2FFido2Server(config.HTTP_ORIGIN, rp)
 
         #TODO: Fill in some of this data with certificate fields?
-        registration_data, state = server.register_begin({ 'id': username.encode(), 'name': username, 'displayName': username })
+        registration_data, state = server.register_begin(PublicKeyCredentialUserEntity(id=base64.b64encode(username.encode()), name=username, display_name=username))
 
         with open(config.CHALLENGE_FILE, 'w', encoding="utf8") as f:
             f.write(json.dumps(state))
@@ -209,10 +212,10 @@ class FidoAuthServer:
                 'rp' : dict(registration_data.public_key.rp),
                 'user' : {
                     'name': registration_data.public_key.user.name,
-                    'id': list(registration_data.public_key.user.id),
+                    'id': base64.b64encode(registration_data.public_key.user.id).decode("utf-8"),
                     'displayName': registration_data.public_key.user.name
                 },
-                'challenge' : list(registration_data.public_key.challenge),
+                'challenge' : base64.b64encode(registration_data.public_key.challenge).decode("utf-8"),
                 'pubKeyCredParams' : [dict(params) for params in registration_data.public_key.pub_key_cred_params],
                 'extensions': registration_data.public_key.extensions
             }

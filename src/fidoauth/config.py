@@ -45,12 +45,15 @@ SCRIPT_SAVE_CREDS = Path(sys.executable).parent / "save_creds.py"
 MOD_TKT_SECRET = None
 MOD_TKT_DIGEST_TYPE = None
 if Path(MOD_TKT_CONFIG_FILE).is_file():
-    with open(MOD_TKT_CONFIG_FILE, "r", encoding="utf8") as f:
-        for line in f:
-            if "TKTAuthSecret" in line:
-                MOD_TKT_SECRET = line.strip().split(" ")[1].strip("\"")
-            elif "TKTAuthDigestType" in line:
-                MOD_TKT_DIGEST_TYPE = line.strip().split(" ")[1]
+    try:
+        with open(MOD_TKT_CONFIG_FILE, "r", encoding="utf8") as f:
+            for line in f:
+                if "TKTAuthSecret" in line:
+                    MOD_TKT_SECRET = line.strip().split(" ")[1].strip("\"")
+                elif "TKTAuthDigestType" in line:
+                    MOD_TKT_DIGEST_TYPE = line.strip().split(" ")[1]
+    except PermissionError as e:
+        pass
 
 def get_logger():
     """

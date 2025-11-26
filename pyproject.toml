@@ -31,3 +31,8 @@ dependencies = [
 [project.scripts]
 fido_save_creds = "fidoauth.cmd:save_creds"
 fido_generate_key = "fidoauth.cmd:generate_key"
+
+[tool.pytest.ini_options]
+testpaths = [
+    "test",
+]

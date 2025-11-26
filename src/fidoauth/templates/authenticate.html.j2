@@ -12,8 +12,8 @@
             {
                 try
                 {
-                    challenge.publicKey.challenge = new Uint8Array(challenge.publicKey.challenge);
-                    challenge.publicKey.allowCredentials[0].id = new Uint8Array(challenge.publicKey.allowCredentials[0].id);
+                    challenge.publicKey.challenge = Uint8Array.from(atob(challenge.publicKey.challenge), c => c.charCodeAt(0));
+                    challenge.publicKey.allowCredentials[0].id = Uint8Array.from(atob(challenge.publicKey.allowCredentials[0].id), c => c.charCodeAt(0));
 
                     let result = await navigator.credentials.get(challenge);
                     document.getElementById('id').value = barraytoa(result.rawId);
